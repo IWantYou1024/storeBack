@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:amq="http://activemq.apache.org/schema/core"
+	xmlns:jms="http://www.springframework.org/schema/jms" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/jms
+        http://www.springframework.org/schema/jms/spring-jms.xsd
+		http://activemq.apache.org/schema/core
+        http://activemq.apache.org/schema/core/activemq-core.xsd">
+
+	<!-- 扫描包 -->
+	<context:component-scan base-package="cn.itcast.jms.consumer" />
+
+	<!-- ActiveMQ 连接工厂 可以产生Connection的ConnectionFactory, 由对应的JMS服务厂商提供 如果连接网络: 
+		tcp://ip:6116; 未连接网络: tcp//localhost:61616 -->
+	<amq:connectionFactory id="amqConnectionFactory"
+		brokerURL="tcp://localhost:61616" userName="admin" password="admin" />
+
+	<!-- Spring Caching 连接工厂 -->
+	<bean id="connectionFactory"
+		class="org.springframework.jms.connection.CachingConnectionFactory">
+		<!-- 目标ConnectionFactory对应真实的可以产生JMS Connection的ConnectionFactory -->
+		<property name="targetConnectionFactory" ref="amqConnectionFactory"></property>
+		<!-- session缓存数量 -->
+		<property name="sessionCacheSize" value="100"></property>
+	</bean>
+
+	<jms:listener-container destination-type="queue"
+		container-type="default" connection-factory="connectionFactory">
+		<jms:listener destination="client_sms" ref="queueConsumer" />
+	</jms:listener-container>
+
+<!-- 	<jms:listener-container destination-type="topic" -->
+<!-- 		container-type="default" connection-factory="connectionFactory"> -->
+<!-- 		<jms:listener destination="spring_topic" ref="topicConsumer" /> -->
+<!-- 	</jms:listener-container> -->
+
+	<import resource="classpath:spring/applicationContext-cache.xml" />
+
+
+</beans>

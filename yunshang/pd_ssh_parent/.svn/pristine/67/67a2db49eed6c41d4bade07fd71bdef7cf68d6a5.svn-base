@@ -1,0 +1,67 @@
+<%@ page language="java" pageEncoding="UTF-8"%>
+<%@ include file="../../base.jsp"%>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title></title>
+<script type="text/javascript"
+	src="${ctx }/js/datepicker/WdatePicker.js"></script>
+</head>
+
+<body>
+	<form name="icform" method="post">
+
+		<div id="menubar">
+			<div id="middleMenubar">
+				<div id="innerMenubar">
+					<div id="navMenubar">
+						<ul>
+							<li id="save"><a href="#"
+								onclick="formSubmit('financeAction_update','_self');this.blur();">保存</a></li>
+							<li id="back"><a href="#" onclick="history.go(-1);">返回</a></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="textbox-title">
+			<img src="${ctx }/skin/default/images/icon/currency_yen.png" /> 新增财务单
+		</div>
+
+
+
+		<div>
+			<table class="commonTable" cellspacing="1">
+				<tr>
+					
+					<td class="columnTitle"  >制单人:${inputBy}</td>
+						<input name="inputBy" type="hidden" value="${ id}"/>
+						
+					<td class="columnTitle" >创建人:${creatBy }</td>
+						<input name="creatBy" type="hidden" value="${ id}"/>
+					
+				</tr>
+				<tr>
+					
+					<td class="columnTitle" name="">创建部门:${creatDept}</td>	
+						<input name="creatDept" type="hidden" value="${dept.id}"/>
+					<td class="columnTitle" name="state" value="${state }">状态：<c:if test="${state==0}">待提交</c:if>
+			<c:if test="${state==1}"><font color="green">已提交</font></c:if></td>
+					<td class="columnTitle" >创建日期</td>
+					<td class="tableContent"><input type="text" 
+						style="width: 200px;" name="createTime" value=""
+						onclick="WdatePicker({el:this,isShowOthers:true,dateFmt:'yyyy-MM-dd'});" />
+					</td>
+					<td class="columnTitle" >制单日期</td>
+					<td class="tableContent"><input type="text" 
+						style="width: 200px;" name="inputTime" value=""
+						onclick="WdatePicker({el:this,isShowOthers:true,dateFmt:'yyyy-MM-dd'});" />
+					</td>
+				</tr>
+			</table>
+		</div>
+
+	
+	</form>
+</body>
+</html> 

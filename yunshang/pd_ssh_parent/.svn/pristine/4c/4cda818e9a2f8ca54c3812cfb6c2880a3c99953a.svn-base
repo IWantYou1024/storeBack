@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa" xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+		http://www.springframework.org/schema/data/jpa 
+		http://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+
+	<description>Spring与Quartz整合</description>
+
+	<!-- 定义一个任务类 -->
+	<bean id="mailJobBean" class="cn.itcast.web.job.MemoAttentionJob" />
+	<!-- 任务类描述 -->
+	<bean id="mailJobDetail"
+		class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="mailJobBean"></property>
+		<property name="targetMethod" value="execute"></property>
+	</bean>
+	<!-- 触发器 -->
+<!-- 	<bean id="mailTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="mailJobDetail"></property>
+		表达式, 每10秒执行一次
+		<property name="cronExpression" value="0/10 * * * * ?"></property>
+	</bean> -->
+	<bean id="mailTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="mailJobDetail"></property>
+		<!-- 表达式, 每天早上8:30分发送邮件 -->
+		<property name="cronExpression" value="0 52 21 * * ?"></property>
+	</bean>
+	<!-- 总管理容器 -->
+	<bean id="startQuartz"
+		class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="mailTrigger" />
+			</list>
+		</property>
+	</bean>
+
+</beans>

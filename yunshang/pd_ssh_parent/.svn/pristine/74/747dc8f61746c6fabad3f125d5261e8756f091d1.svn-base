@@ -1,0 +1,219 @@
+package cn.itcast.web.action.cargo;
+
+import java.util.List;
+
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+
+import org.apache.struts2.convention.annotation.Action;
+import org.apache.struts2.convention.annotation.Namespace;
+import org.apache.struts2.convention.annotation.Result;
+import org.apache.struts2.convention.annotation.Results;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import com.opensymphony.xwork2.ActionContext;
+
+import cn.itcast.domain.cargo.Finance;
+import cn.itcast.domain.cargo.Invoice;
+import cn.itcast.domain.cargo.PackingList;
+import cn.itcast.domain.sysadmin.User;
+import cn.itcast.service.FinanceService;
+import cn.itcast.service.InvoiceService;
+import cn.itcast.service.PackingListService;
+import cn.itcast.utils.Page;
+import cn.itcast.utils.SysConstant;
+import cn.itcast.web.action.BaseAction;
+
+@Namespace("/cargo")
+@Results({ @Result(name = "list", location = "/WEB-INF/pages/cargo/finance/jFinanceList.jsp"),
+		@Result(name = "tocreate", location = "/WEB-INF/pages/cargo/finance/jFinanceToCreat.jsp"),
+		@Result(name = "insert", type = "redirect", location = "financeAction_list"),
+		@Result(name = "update", type = "redirect", location = "financeAction_list"),
+		@Result(name = "toview", location = "/WEB-INF/pages/cargo/finance/jFinanceView.jsp"),
+		@Result(name = "delete", type = "redirect", location = "financeAction_list"),
+		@Result(name = "toupdate", location = "/WEB-INF/pages/cargo/finance/jFinanceToUpdate.jsp"),
+		@Result(name = "submit", type = "redirect", location = "financeAction_list"),
+		@Result(name = "cancel", type = "redirect", location = "financeAction_list") })
+public class FinanceAction extends BaseAction<Finance> {
+
+	@Override
+	public Finance setModel() {
+
+		return new Finance();
+	}
+
+	@Autowired
+	private FinanceService financeService;
+
+	@Autowired
+	private PackingListService packingListService;
+
+	@Autowired
+	private InvoiceService invoiceService;
+
+	@Action(value = "financeAction_list")
+	public String list() {
+		 Specification<Finance> spec = new Specification<Finance>() {
+		
+		 @Override
+		 public Predicate toPredicate(Root<Finance> root, CriteriaQuery<?>
+		 query, CriteriaBuilder cb) {
+			    Predicate p1 = cb.equal(root.get("state").as(Integer.class), 0);
+				Predicate p2 = cb.equal(root.get("state").as(Integer.class), 1);
+				return cb.or(p1,p2);
+		 }
+		 };
+		Pageable pageable = new PageRequest(page.getPageNo() - 1, page.getPageSize());
+
+		org.springframework.data.domain.Page<Finance> findPage = financeService.findPage(spec, pageable);
+
+		page.setResults(findPage.getContent());
+		page.setTotalPage(findPage.getTotalPages());
+		page.setTotalRecord(findPage.getTotalElements());
+		page.setUrl("financeAction_list");
+
+		super.push(page);
+
+		return "list";
+	}
+
+	@Action(value = "financeAction_tocreate")
+	public String tocreate() {
+		User user = (User) ActionContext.getContext().getSession().get(SysConstant.CURRENT_USER_INFO);
+		super.push(user);
+
+		Specification<Invoice> spec = new Specification<Invoice>() {
+
+			@Override
+			public Predicate toPredicate(Root<Invoice> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+				Predicate equal = cb.equal(root.get("state").as(Integer.class), "1");
+				return equal;
+			}
+		};
+		Pageable pageable = new PageRequest(page.getPageNo() - 1, page.getPageSize());
+
+		org.springframework.data.domain.Page<Invoice> findPage = invoiceService.findPage(spec, pageable);
+
+		page.setResults(findPage.getContent());
+		page.setTotalPage(findPage.getTotalPages());
+		page.setTotalRecord(findPage.getTotalElements());
+		page.setUrl("/WEB-INF/pages/cargo/finance/jFinanceToCreat.jsp");
+
+		super.push(page);
+
+		return "tocreate";
+	}
+
+	@Action(value = "financeAction_insert")
+	public String insert() {
+		// PackingList packingList = packingListService.get(model.getId());
+		Invoice invoice = invoiceService.get(model.getId());
+
+		// packingList.setState(4);
+		invoice.setState(2);
+		model.setState(0);
+		financeService.saveOrUpdate(model);
+
+		// packingListService.saveOrUpdate(packingList);
+		invoiceService.saveOrUpdate(invoice);
+		return "insert";
+	}
+
+	@Action(value = "financeAction_toview")
+	public String toview() {
+		Finance finance = financeService.get(model.getId());
+		super.push(finance);
+		return "toview";
+	}
+
+	@Action(value = "financeAction_delete")
+	public String delete() {
+
+		String[] ids = model.getId().split(", ");
+		for (String id : ids) {
+			Invoice invoice = invoiceService.get(id);
+			invoice.setState(1);
+			invoiceService.saveOrUpdate(invoice);
+
+			PackingList packingList = packingListService.get(id);
+			packingList.setState(3);
+			packingListService.saveOrUpdate(packingList);
+
+			Finance finance = financeService.get(id);
+			finance.setCreatBy(null);
+			finance.setCreatDept(null);
+			// finance.setCreatTime(null);
+			finance.setInputBy(null);
+			// finance.setInputDate(null);
+			finance.setState(null);
+
+			financeService.saveOrUpdate(finance);
+		}
+
+		return "delete";
+	}
+
+	@Action(value = "financeAction_toupdate")
+	public String toupdate() {
+		Finance finance = financeService.get(model.getId());
+		
+		super.push(finance);
+		
+		
+
+		return "toupdate";
+	}
+	@Action(value = "financeAction_update")
+	public String update() {
+		
+		financeService.saveOrUpdate(model);
+
+		return "update";
+	}
+
+	@Action(value = "financeAction_submit")
+	public String submit() {
+		String[] ids = model.getId().split(", ");
+		for (String id : ids) {
+			Finance finance = financeService.get(id);
+			finance.setState(1);
+			financeService.saveOrUpdate(finance);
+
+			Invoice invoice = invoiceService.get(id);
+			invoice.setState(2);
+			invoiceService.saveOrUpdate(invoice);
+
+			PackingList packingList = packingListService.get(id);
+			packingList.setState(4);
+			packingListService.saveOrUpdate(packingList);
+			super.push(finance);
+		}
+		return "submit";
+	}
+
+	@Action(value = "financeAction_cancel")
+	public String cancel() {
+		String[] ids = model.getId().split(", ");
+		for (String id : ids) {
+			Finance finance = financeService.get(id);
+			finance.setState(0);
+			financeService.saveOrUpdate(finance);
+
+			Invoice invoice = invoiceService.get(id);
+			invoice.setState(1);
+			invoiceService.saveOrUpdate(invoice);
+
+			PackingList packingList = packingListService.get(id);
+			packingList.setState(3);
+			packingListService.saveOrUpdate(packingList);
+
+			super.push(finance);
+		}
+		return "cancel";
+	}
+}

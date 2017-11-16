@@ -1,0 +1,58 @@
+package cn.itcast.web.action.cargo;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+
+
+import javax.servlet.http.HttpServletResponse;
+
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+
+
+import cn.itcast.domain.cargo.Invoice;
+import cn.itcast.utils.DownloadUtil;
+import cn.itcast.utils.UtilFuns;
+
+
+
+public class InvoicePrint {
+	public void print(Invoice invoice,String path, HttpServletResponse response) throws Exception{
+		//相同厂家的信息一起打印
+		System.out.println("print方法执行了我。。。。。。。。");
+		UtilFuns utilFuns = new UtilFuns();
+		//获取模板文件
+		String tempXlsFile = path + "make/xlsprint/tINVOICE.xls";
+		System.out.println(tempXlsFile);
+		FileInputStream is = new FileInputStream(tempXlsFile);
+		Workbook workbook = new HSSFWorkbook(is); 
+		Sheet sheet = workbook.getSheetAt(0);
+		
+		int rowIndex = 14;
+		Row Row = sheet.getRow(rowIndex);
+		Row.createCell(1).setCellValue("");
+		Row.createCell(3).setCellValue(UtilFuns.dateTimeFormat(invoice.getCreateTime()));
+		Row.createCell(7).setCellValue(invoice.getScNo());
+		Row.createCell(8).setCellValue("B/L.NO");
+		Row.createCell(9).setCellValue(invoice.getBlNo());
+		rowIndex=18;
+		Row Row19 = sheet.getRow(rowIndex);
+		Row19.createCell(1).setCellValue("");
+		Row19.createCell(3).setCellValue("");
+		
+		
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		workbook.write(os);
+		DownloadUtil downloadUtil = new DownloadUtil();
+		downloadUtil.download(os, response, "发票单" + ".xls");
+
+		 
+		
+		
+		
+	}		
+}

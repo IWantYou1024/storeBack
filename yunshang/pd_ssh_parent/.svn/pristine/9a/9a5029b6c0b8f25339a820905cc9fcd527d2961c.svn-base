@@ -1,0 +1,219 @@
+<%@ page language="java" pageEncoding="UTF-8"%>
+<%@ include file="../../baselist.jsp"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title></title>
+	
+	<!-- 判断是否唯一选择start ,修改选择的id和跳转页面即可-->
+	<script>
+	     function isOnlyChecked(){
+	    	 var checkBoxArray = document.getElementsByName('shippingOrderId');
+				var count=0;
+				for(var index=0; index<checkBoxArray.length; index++) {
+					if (checkBoxArray[index].checked) {
+						count++;
+					}	
+				}
+			//jquery
+			//var count = $("[input name='id']:checked").size();
+			if(count==1)
+				return true;
+			else
+				return false;
+	     }
+	     function toView(){
+	    	 if(isOnlyChecked()){
+	    		 formSubmit('shippingOrderAction_toview','_self');
+	    	 }else{
+	    		 alert("请先选择一项并且只能选择一项，再进行操作！");
+	    	 }
+	     }
+	     //实现修改,只能修改草稿
+		    function isUpdate(){
+		    	var checkBoxArray = document.getElementsByName('shippingOrderId');
+		    	for(var index=0; index<checkBoxArray.length; index++) {
+		    		if(checkBoxArray[index].checked){
+		    			if (checkBoxArray[index].getAttribute("sta")!=0) {
+							return false;
+						}	
+		    		}
+				}
+		    	return true;
+	     }
+	     //实现更新
+	     function toUpdate(){
+	    	 if(isOnlyChecked()&&isUpdate()){
+	    		 formSubmit('shippingOrderAction_toupdate','_self');
+	    	 }else{
+	    		 alert("只能修改草稿状态的，并且只能选择一项进行操作！");
+	    	 }
+	     }
+	</script>
+	<!-- 判断是否唯一选择end -->	
+	
+	
+	<!-- ======================判断各状态的委托单start ===========================-->
+	<script>
+		 //实现取消,只能提交的取消
+	    function isCancel(){
+	    	var checkBoxArray = document.getElementsByName('shippingOrderId');
+	    	for(var index=0; index<checkBoxArray.length; index++) {
+	    		if(checkBoxArray[index].checked){
+	    			if (checkBoxArray[index].getAttribute("sta")!=1) {
+						return false;
+					}	
+	    		}
+			}
+	    	return true;
+		 }	
+	    function toCancel(){
+	     if(isCancel()){
+	   		 formSubmit('shippingOrderAction_cancel','_self');
+	   	 }else{
+	   		 alert("只能选择已提交的,请选择已提交的委托单，再进行操作！");
+	   	 }
+	    }
+	</script>
+		<!-- 判断各状态的委托单删除 -->
+	<script>
+		 //实现删除,只能删除草稿
+	    function isDelete(){
+	    	var checkBoxArray = document.getElementsByName('shippingOrderId');
+	    	for(var index=0; index<checkBoxArray.length; index++) {
+	    		if(checkBoxArray[index].checked){
+	    			if (checkBoxArray[index].getAttribute("sta")!=0) {
+						return false;
+					}	
+	    		}
+			}
+	    	return true;
+		 }	
+	    function toDelete(){
+	     if(isDelete()){
+	   		 formSubmit('shippingOrderAction_delete','_self');
+	   	 }else{
+	   		 alert("只能选择草稿状态下的委托单进行删除操作！");
+	   	 }
+	    }
+	</script>
+		<!-- 判断各状态的装箱单end -->
+	<script>
+		 //实现提交,只能提交草稿
+	    function isSubmit(){
+	    	var checkBoxArray = document.getElementsByName('shippingOrderId');
+	    	
+	    	for(var index=0; index<checkBoxArray.length; index++) {
+	    		if(checkBoxArray[index].checked){
+	    			if (checkBoxArray[index].getAttribute("sta")!=0) {
+						return false;
+					}	
+	    		}
+			}
+	    	return true;
+		 }	
+	    function toSubmit(){
+	     if(isSubmit()){
+	   		 formSubmit('shippingOrderAction_submit','_self');
+	   	 }else{
+	   		 alert("只能选择草稿的,请选择草稿状态下的装箱单进行提交操作！");
+	   	 }
+	    }
+	</script>
+	
+</head>
+
+<body>
+<form name="icform" method="post">
+<div id="menubar">
+<div id="middleMenubar">
+<div id="innerMenubar">
+  <div id="navMenubar">
+<ul>
+<!-- <li id="view"><a href="#" onclick="formSubmit('shippingOrderAction_toview','_self');this.blur();">查看</a></li>
+<li id="view"><a href="#" onclick="formSubmit('shippingOrderAction_create','_self');this.blur();">新增</a></li>
+<li id="update"><a href="#" onclick="formSubmit('shippingOrderAction_toupdate','_self');this.blur();">修改</a></li>
+<li id="delete"><a href="#" onclick="formSubmit('shippingOrderAction_delete','_self');this.blur();">删除</a></li>
+<li id="new"><a href="#" onclick="formSubmit('shippingOrderAction_submit','_self');this.blur();">提交</a></li>
+<li id="new"><a href="#" onclick="formSubmit('shippingOrderAction_cancel','_self');this.blur();">取消</a></li>
+<li id="work_assign"><a href="#" onclick="formSubmit('shippingOrderAction_exportE','_self');this.blur();">打印</a></li> -->
+
+<li id="view"><a href="#" onclick="javascript:toView();this.blur();">查看</a></li>
+<li id="new"><a href="#" onclick="formSubmit('shippingOrderAction_create','_self');this.blur();">新增</a></li>
+<li id="update"><a href="#" onclick="javascript:toUpdate();this.blur();">修改</a></li>
+<li id="update"><a href="#" onclick="javascript:toSubmit();this.blur();">提交</a></li>
+<li id="update"><a href="#" onclick="javascript:toCancel();this.blur();">取消</a></li>
+<li id="delete"><a href="#" onclick="javascript:toDelete();this.blur();">删除</a></li>
+<li id="update"><a href="#" onclick="formSubmit('shippingOrderAction_exportE','_self');this.blur();">打印</a></li>
+
+</ul>
+  </div>
+</div>
+</div>
+</div>
+   
+  <div class="textbox-title">
+	<img src="${ctx }/skin/default/images/icon/currency_yen.png"/>
+    委托管理列表
+  </div> 
+  
+<div>
+
+
+<div class="eXtremeTable" >
+<table id="ec_table" class="tableRegion" width="98%" >
+	<thead>
+	<tr>
+		<td class="tableHeader"><input type="checkbox" name="selid" onclick="checkAll('shippingOrderId',this)"></td>
+		<td class="tableHeader">序号</td>
+		<td class="tableHeader">报运号</td>
+		<td class="tableHeader">货主</td>
+		<td class="tableHeader">信用证号</td>
+		<td class="tableHeader">收货人及地址</td>
+		<td class="tableHeader">装运港</td>
+		<td class="tableHeader">目的港</td>
+		<td class="tableHeader">运输方式</td>
+		<td class="tableHeader">运费条件</td>
+		<td class="tableHeader">制单日期</td>
+		<td class="tableHeader">状态</td>
+	</tr>
+	</thead>
+	<tbody class="tableBody" >
+${links}
+	
+	<c:forEach items="${results}" var="o" varStatus="status">
+	<tr class="odd" onmouseover="this.className='highlight'" onmouseout="this.className='odd'" >
+		<td><input type="checkbox" name="shippingOrderId" value="${o.shippingOrderId}" sta="${o.state}"/></td>
+		<td>${status.index+1}</td>
+		<td>${o.shippingOrderId}</td>
+		<td align="center">
+			${o.shipper}
+		</td>		
+		<td>${o.lcNo}</td>
+		<td>${o.notifyParty}</td>
+		<td>${o.portOfLoading}</td>
+		<td>${o.portOfDischarge}</td>
+		<td>${o.orderType}</td>
+		<td>${o.freight}</td>
+		<td><fmt:formatDate value="${o.createTime }" pattern="yyyy-MM-dd"/></td>
+		<td>
+		   <c:if test="${o.state==0}">草稿</c:if>
+		   <c:if test="${o.state==1}">已提交</c:if>
+		   <c:if test="${o.state==2}">已开票</c:if>
+		</td>
+	</tr>
+	</c:forEach>
+	
+	</tbody>
+</table>
+</div>
+ 
+</div>
+ 
+ 
+</form>
+</body>
+</html>
+

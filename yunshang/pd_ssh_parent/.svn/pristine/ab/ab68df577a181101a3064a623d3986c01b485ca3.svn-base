@@ -1,0 +1,401 @@
+package cn.itcast.web.action.cargo;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.struts2.ServletActionContext;
+import org.apache.struts2.convention.annotation.Action;
+import org.apache.struts2.convention.annotation.Namespace;
+import org.apache.struts2.convention.annotation.Result;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
+
+import com.itextpdf.text.log.SysoCounter;
+
+import cn.itcast.domain.cargo.ContractProduct;
+import cn.itcast.domain.cargo.PackingList;
+import cn.itcast.domain.cargo.ShippingOrder;
+import cn.itcast.domain.sysadmin.User;
+import cn.itcast.service.PackingListService;
+import cn.itcast.service.ShippingOrderService;
+import cn.itcast.utils.DownloadUtil;
+import cn.itcast.utils.SysConstant;
+import cn.itcast.utils.UtilFuns;
+import cn.itcast.web.action.BaseAction;
+@Namespace("/cargo")
+public class ShippingOrderAction extends BaseAction<ShippingOrder> {
+	@Autowired
+	private ShippingOrderService shippingOrderService;
+	@Autowired
+	private PackingListService packingListService;
+	public ShippingOrder setModel() {
+		return new ShippingOrder();
+	}
+	
+	/*
+	 * 委托管理分页显示
+	 * 
+	 * */
+	@Action(value="shippingOrderAction_list",results={@Result(name="list",location="/WEB-INF/pages/cargo/shippingOrder/jShippingOrderList.jsp")})
+	public String list() throws Exception {
+		
+		Specification<ShippingOrder> spec = new Specification<ShippingOrder>() {
+			
+			@Override
+			public Predicate toPredicate(Root<ShippingOrder> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+				Predicate p1 = cb.equal(root.get("state").as(Integer.class), 0);
+				Predicate p2 = cb.equal(root.get("state").as(Integer.class), 1);
+				Predicate p3 = cb.equal(root.get("state").as(Integer.class), 2);
+				return cb.or(p1,p2,p3);
+			}
+		};
+		
+		Page<ShippingOrder> page2 = shippingOrderService.findPage(spec, new PageRequest(page.getPageNo()-1, page.getPageSize()));
+		super.parsePage(page, page2);
+		page.setUrl("shippingOrderAction_list");
+		this.push(page);
+		return "list";
+	}
+	/*
+	 * 跳转委托单新增页面
+	 * */
+	@Action(value="shippingOrderAction_create",results={@Result(name="create",location="/WEB-INF/pages/cargo/shippingOrder/jShippingOrderCreate.jsp")})
+	public String create() throws Exception {
+		// 查询状态为已提交的装箱单
+		Specification<PackingList> spec = new Specification<PackingList>() {
+			
+			@Override
+			public Predicate toPredicate(Root<PackingList> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+				// TODO Auto-generated method stub
+				return cb.equal(root.get("state").as(Integer.class), 1);
+			}
+		};
+		Page<PackingList> page2 = packingListService.findPage(spec, new PageRequest(page.getPageNo()-1, page.getPageSize()));
+		super.parsePage(page, page2);
+		page.setUrl("shippingOrderAction_create");
+		this.push(page);
+		return "create";
+	}
+	//执行委托单的数据库新增
+	@Action(value="shippingOrderAction_insert",results={@Result(name="insert",type="redirect",location="shippingOrderAction_list")})
+	public String insert() throws Exception {
+		ShippingOrder shippingOrder = shippingOrderService.get(model.getShippingOrderId());
+		shippingOrder.setShipper(model.getShipper());
+		shippingOrder.setOrderType(model.getOrderType());
+		shippingOrder.setConsignee(model.getConsignee());
+		shippingOrder.setNotifyParty(model.getNotifyParty());
+		shippingOrder.setPortOfLoading(model.getPortOfLoading());
+		shippingOrder.setPortOfTrans(model.getPortOfTrans());
+		shippingOrder.setPortOfDischarge(model.getPortOfDischarge());
+		shippingOrder.setLcNo(model.getLcNo());
+		shippingOrder.setLoadingDate(model.getLoadingDate());
+		shippingOrder.setLimitDate(model.getLimitDate());
+		shippingOrder.setIsBatch(model.getIsBatch());
+		shippingOrder.setIsTrans(model.getIsTrans());
+		shippingOrder.setCopyNum(model.getCopyNum());
+		shippingOrder.setRemark(model.getRemark());
+		shippingOrder.setSpecialCondition(model.getSpecialCondition());
+		shippingOrder.setFreight(model.getFreight());
+		shippingOrder.setState(0);
+		User user =(User) ServletActionContext.getRequest().getSession().getAttribute(SysConstant.CURRENT_USER_INFO);
+		shippingOrder.setCreateBy(user.getUserName());
+		shippingOrder.setCheckBy(user.getUserName());
+		shippingOrder.setCreateDept(user.getDept().getDeptName());
+		shippingOrderService.saveOrUpdate(shippingOrder);
+		PackingList packingList = packingListService.get(model.getShippingOrderId());
+		packingList.setState(2);
+		packingListService.saveOrUpdate(packingList);
+		return "insert";
+	}
+	/*
+	 * 查询
+	 * */
+	@Action(value="shippingOrderAction_toview",results={@Result(name="toview",location="/WEB-INF/pages/cargo/shippingOrder/jShippingOrderView.jsp")})
+	public String toview() throws Exception {
+		// 根据ID查询
+		ShippingOrder shippingOrder = shippingOrderService.get(model.getShippingOrderId());
+		User user =(User)ServletActionContext.getRequest().getSession().getAttribute(SysConstant.CURRENT_USER_INFO);
+		shippingOrder.setCreateBy(user.getUserName());
+		shippingOrder.setCheckBy(user.getUserName());
+		shippingOrder.setCreateDept(user.getDept().getDeptName());
+		super.push(shippingOrder);
+		return "toview";
+	}
+	/*
+	 * 提交信息,将委托分页列表中的选定草稿状态改为已委托
+	 * */
+	@Action(value="shippingOrderAction_submit",results={@Result(name="submit",type="redirect",location="shippingOrderAction_list")})
+	public String submit() throws Exception {
+		// TODO Auto-generated method stub
+		String[] ids = model.getShippingOrderId().split(", ");
+		for (String id : ids) {
+			ShippingOrder shippingOrder = shippingOrderService.get(id);
+			shippingOrder.setState(1);
+			shippingOrderService.saveOrUpdate(shippingOrder);
+		}
+		return "submit";
+	}
+	
+	
+	//跳转到修改页面
+	@Action(value="shippingOrderAction_toupdate",results={@Result(name="toupdate",location="/WEB-INF/pages/cargo/shippingOrder/jShippingOrderUpdate.jsp")})
+	public String toupdate() throws Exception {
+		// 查询状态为已提交的装箱单
+		Specification<PackingList> spec = new Specification<PackingList>() {
+			@Override
+			public Predicate toPredicate(Root<PackingList> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+				// TODO Auto-generated method stub
+				return cb.equal(root.get("state").as(Integer.class), 1);
+			}
+		};
+		Page<PackingList> page2 = packingListService.findPage(spec, new PageRequest(page.getPageNo()-1, page.getPageSize()));
+		super.parsePage(page, page2);
+		page.setUrl("shippingOrderAction_toupdate");
+		this.push(page);
+		//根据id查询委托单
+		ShippingOrder shippingOrder = shippingOrderService.get(model.getShippingOrderId());
+		super.push(shippingOrder);
+		return "toupdate";
+	}
+	
+	//修改委托单
+	@Action(value="shippingOrderAction_update",results={@Result(name="update",type="redirect",location="shippingOrderAction_list")})
+	public String update() throws Exception {
+		//根据模型驱动中的id查询原先委托单
+		ShippingOrder shippingOrder = shippingOrderService.get(model.getShippingOrderId());
+		if(shippingOrder.getState() == 0){
+			shippingOrder.setShipper(model.getShipper());
+			shippingOrder.setOrderType(model.getOrderType());
+			shippingOrder.setConsignee(model.getConsignee());
+			shippingOrder.setNotifyParty(model.getNotifyParty());
+			shippingOrder.setPortOfLoading(model.getPortOfLoading());
+			shippingOrder.setPortOfTrans(model.getPortOfTrans());
+			shippingOrder.setPortOfDischarge(model.getPortOfDischarge());
+			shippingOrder.setLcNo(model.getLcNo());
+			shippingOrder.setLoadingDate(model.getLoadingDate());
+			shippingOrder.setLimitDate(model.getLimitDate());
+			shippingOrder.setIsBatch(model.getIsBatch());
+			shippingOrder.setIsTrans(model.getIsTrans());
+			shippingOrder.setCopyNum(model.getCopyNum());
+			shippingOrder.setRemark(model.getRemark());
+			shippingOrder.setSpecialCondition(model.getSpecialCondition());
+			shippingOrder.setFreight(model.getFreight());
+			shippingOrderService.saveOrUpdate(shippingOrder);
+		}
+		return "update";
+	}
+	
+	//删除委托单
+	@Action(value="shippingOrderAction_delete",results={@Result(name="delete",type="redirect",location="shippingOrderAction_list")})
+	public String delete() throws Exception {
+		//根据委托单Id删除委托单并修改装箱单状态
+		String[] ids = model.getShippingOrderId().split(", ");
+		for (String id : ids) {
+			PackingList packingList = packingListService.get(id);
+			ShippingOrder order = shippingOrderService.get(id);
+			if(order.getState()==0){
+				packingList.setState(1);
+				packingListService.saveOrUpdate(packingList);
+				ShippingOrder shippingOrder = shippingOrderService.get(id);
+				shippingOrder.setCheckBy(null);
+				shippingOrder.setConsignee(null);
+				shippingOrder.setCopyNum(null);
+				shippingOrder.setCreateBy(null);
+				shippingOrder.setCreateDept(null);
+				shippingOrder.setFreight(null);
+				shippingOrder.setIsBatch(null);
+				shippingOrder.setIsTrans(null);
+				shippingOrder.setLcNo(null);
+				shippingOrder.setNotifyParty(null);
+				shippingOrder.setOrderType(null);
+				shippingOrder.setPortOfDischarge(null);
+				shippingOrder.setPortOfLoading(null);
+				shippingOrder.setPortOfTrans(null);
+				shippingOrder.setRemark(null);
+				shippingOrder.setShipper(null);
+				shippingOrder.setSpecialCondition(null);
+				shippingOrder.setState(null);
+				shippingOrderService.saveOrUpdate(shippingOrder);
+				return "delete";
+			}
+		}
+		return "delete";
+	}
+	
+	//取消已提交托运
+	@Action(value="shippingOrderAction_cancel",results={@Result(name="cancel",type="redirect",location="shippingOrderAction_list")})
+	public String cancel() throws Exception {
+		//只可以取消状态为1的托运单
+		ShippingOrder shippingOrder = shippingOrderService.get(model.getShippingOrderId());
+		if(shippingOrder.getState()==1){
+			shippingOrder.setState(0);
+			shippingOrderService.saveOrUpdate(shippingOrder);
+			return "cancel";
+		}else{
+			return "cancel";
+		}
+		
+	}
+	
+	
+	//打印
+	@Action(value="shippingOrderAction_exportE",results={@Result(name="exportE",type="redirect",location="shippingOrderAction_list")})
+	public String exportE() throws Exception {
+		String[] ids = model.getShippingOrderId().split(", ");
+		for (String id : ids) {
+			ShippingOrder shippingOrder = shippingOrderService.get(id);
+			PackingList packingList = packingListService.get(id);
+			/**
+			 * 使用模板 2003版本
+			 */
+				// 获取模板
+				String path = ServletActionContext.getServletContext().getRealPath("/make/xlsprint/tSHIPPINGORDER.xls");
+				FileInputStream in = new FileInputStream(new File(path));
+				Workbook wb = new HSSFWorkbook(in);
+				// 获取Sheet
+				Sheet sheet = wb.getSheetAt(0);
+				// 设置一些通用变量
+				Row nRow = null;
+				Cell nCell = null;
+
+				nRow = sheet.getRow(3);//货主
+				nCell = nRow.getCell(0);
+				if(UtilFuns.isNotEmpty(shippingOrder.getShipper())){
+					nCell.setCellValue(shippingOrder.getShipper());
+				}
+				
+				nRow = sheet.getRow(8);//提单抬头
+				nCell = nRow.getCell(0);
+				if(UtilFuns.isNotEmpty(shippingOrder.getConsignee())){
+					nCell.setCellValue(shippingOrder.getConsignee());
+				}
+				
+				nRow = sheet.getRow(15);//正本通知人
+				nCell = nRow.getCell(0);
+				if(UtilFuns.isNotEmpty(shippingOrder.getNotifyParty())){
+					nCell.setCellValue(shippingOrder.getNotifyParty());
+				}
+				
+				nRow = sheet.getRow(19);//发票号
+				Cell createCell1 = nRow.createCell(0);
+				if(UtilFuns.isNotEmpty(shippingOrder.getShipper())){
+					nCell.setCellValue(shippingOrder.getShipper());
+				}
+				
+				nRow = sheet.getRow(18);//时间
+				Cell createCell2 = nRow.createCell(3);
+				if(UtilFuns.isNotEmpty(UtilFuns.dateTimeFormat(shippingOrder.getCreateTime()))){
+					createCell2.setCellValue(UtilFuns.dateTimeFormat(shippingOrder.getCreateTime()));
+				}
+				
+				nRow = sheet.getRow(19);//信用证
+				Cell createCell3 = nRow.createCell(06);
+				if(UtilFuns.isNotEmpty(shippingOrder.getLcNo())){
+					createCell3.setCellValue(shippingOrder.getLcNo());
+				}
+				
+				nRow = sheet.getRow(23);//装船港
+				Cell createCell4 = nRow.createCell(0);
+				if(UtilFuns.isNotEmpty(shippingOrder.getPortOfLoading())){
+					createCell4.setCellValue(shippingOrder.getPortOfLoading());
+				}
+				
+				nRow = sheet.getRow(23);//转船港
+				Cell createCell5 = nRow.createCell(3);
+				if(UtilFuns.isNotEmpty(shippingOrder.getPortOfTrans())){
+					createCell5.setCellValue(shippingOrder.getPortOfTrans());
+				}
+				
+				nRow = sheet.getRow(23);//卸货港
+				Cell createCell6 = nRow.createCell(6);
+				if(UtilFuns.isNotEmpty(shippingOrder.getPortOfDischarge())){
+					createCell6.setCellValue(shippingOrder.getPortOfDischarge());
+				}
+				nRow = sheet.getRow(27);//装期
+				Cell createCell7 = nRow.createCell(0);
+				if(UtilFuns.isNotEmpty(UtilFuns.dateTimeFormat(shippingOrder.getLoadingDate()))){
+					createCell7.setCellValue(UtilFuns.dateTimeFormat(shippingOrder.getLoadingDate()));
+				}
+				
+				nRow = sheet.getRow(27);//效期
+				Cell createCell8 = nRow.createCell(2);
+				if(UtilFuns.isNotEmpty(UtilFuns.dateTimeFormat(shippingOrder.getLimitDate()))){
+					createCell8.setCellValue(UtilFuns.dateTimeFormat(shippingOrder.getLimitDate()));
+				}
+				
+				nRow = sheet.getRow(27);//分批
+				Cell createCell9 = nRow.createCell(3);
+				if(UtilFuns.isNotEmpty(shippingOrder.getIsBatch())){
+					createCell9.setCellValue(shippingOrder.getIsBatch());
+				}
+				
+				nRow = sheet.getRow(27);//转船
+				Cell createCell10 = nRow.createCell(5);
+				if(UtilFuns.isNotEmpty(shippingOrder.getIsTrans())){
+					createCell10.setCellValue(shippingOrder.getIsTrans());
+				}
+				
+				nRow = sheet.getRow(27);//份数
+				Cell createCell11 = nRow.createCell(7);
+				if(UtilFuns.isNotEmpty(shippingOrder.getCopyNum())){
+					createCell11.setCellValue(shippingOrder.getCopyNum());
+				}
+				
+				nRow = sheet.getRow(31);//唛头
+				Cell createCell13 = nRow.createCell(0);
+				if(UtilFuns.isNotEmpty(packingList.getMarks()+packingList.getExportNos())){
+					createCell13.setCellValue(packingList.getMarks()+packingList.getExportNos());
+				}
+				
+				nRow = sheet.getRow(31);//描述
+				Cell createCell14 = nRow.createCell(3);
+				if(UtilFuns.isNotEmpty(packingList.getDescriptions())){
+					createCell14.setCellValue(packingList.getDescriptions());
+				}
+				
+				nRow = sheet.getRow(37);//运输要求
+				nCell = nRow.getCell(1);
+				if(UtilFuns.isNotEmpty(shippingOrder.getSpecialCondition())){
+					nCell.setCellValue(shippingOrder.getSpecialCondition());
+				}
+				
+				nRow = sheet.getRow(43);//复核
+				Cell createCell12 = nRow.createCell(7);
+				if(UtilFuns.isNotEmpty(shippingOrder.getCheckBy())){
+					createCell12.setCellValue(shippingOrder.getCheckBy());
+				}
+
+				// =====================下载Excel文件
+				DownloadUtil downloadUtil = new DownloadUtil();
+
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				wb.write(baos);
+				HttpServletResponse response = ServletActionContext.getResponse();
+				downloadUtil.download(baos, response, "委托表"  + ".xls");
+		}
+
+		return NONE;
+	}
+	
+	
+}

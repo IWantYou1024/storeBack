@@ -1,0 +1,43 @@
+package cn.itcast.web.action.home;
+
+import org.apache.struts2.ServletActionContext;
+import org.apache.struts2.convention.annotation.Action;
+import org.apache.struts2.convention.annotation.Namespace;
+import org.apache.struts2.convention.annotation.Result;
+import org.apache.struts2.convention.annotation.Results;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+
+import cn.itcast.domain.sysadmin.User;
+import cn.itcast.utils.FastJsonUtils;
+import cn.itcast.web.action.BaseAction;
+
+@Namespace("/home")
+@Results({ @Result(name = "fastMenuClear", location = "/WEB-INF/pages/home/left.jsp") })
+public class MenuAction extends BaseAction {
+
+	@Autowired
+	private RedisTemplate<String, String> redisTemplate;
+
+	@Action("menuAction_fastMenu")
+	public String fastMenu() throws Exception {
+
+		User user = super.getCurUser();
+		if (user != null) {
+			String data = redisTemplate.opsForValue().get(user.getId());
+			FastJsonUtils.writeJson(ServletActionContext.getResponse(), data);
+		}
+
+		return NONE;
+	}
+
+	@Action("menuAction_fastMenuClear")
+	public String fastMenuClear() throws Exception {
+		User user = super.getCurUser();
+		if (user != null) {
+			redisTemplate.delete(user.getId());
+		}
+		return "fastMenuClear";
+	}
+
+}
